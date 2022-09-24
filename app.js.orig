@@ -22,10 +22,12 @@ app.use(session({
     saveUninitialized: false
 }))
 
+<<<<<<< HEAD
+=======
 app.use(passport.initialize())
 app.use(passport.session())
 
-
+>>>>>>> 2cafdba8ecb3b004665224e8b655d69e4d06923b
 mongoose.connect("mongodb://localhost:27017/userDB", {useNewUrlParser: true})
 
 const userSchema = new mongoose.Schema ({
@@ -55,25 +57,13 @@ app.get("/register", function(req, res){
     res.render("register")
 })
 
-
 app.get("/secrets", function(req, res){
-
-    res.set('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stal   e=0, post-check=0, pre-check=0'); //this line solves the isse of back button, from Q&A of students
-
-    if (req.isAuthenticated()) {
-      User.find({"secret": {$ne: null}}, function(err, foundUsers){
-        if (err){
-          console.log(err);
-        } else {
-          if (foundUsers) {
-            res.render("secrets", {usersWithSecrets: foundUsers});
-          }
-        }
-      });
+    if(req.isAuthenticated){
+        res.render("secrets")
     } else {
-      res.redirect("/login");
+        res.redirect("/login")
     }
-  });
+})
 
 app.get("/logout", function(req, res){
     req.logout(function(err){
@@ -99,10 +89,21 @@ app.post("/register", function(req, res){
   
 })
 
-//below changes were from the Q&A ofthe lesson
-app.post("/login", passport.authenticate("local"), function(req, res){
-    res.redirect("/secrets");
-});
+app.post("/login", function(req, res){
+    const user = new User({
+        username: req.body.username,
+        password: req.body.password
+    })
+   req.login(user, function(err){
+    if(err){
+        console.log(err)
+    } else {
+        passport.authenticate("local")(req, res, function(){        //if login is okay, then we authenticate using the ff. lines of codes
+            res.redirect("/secrets")
+        })    
+    }
+   })
+})
 
 
 app.listen(3000, function(){
