@@ -41,17 +41,31 @@ const User = new mongoose.model("User", userSchema)
 
 passport.use(User.createStrategy()) //create a local login strategy
 
-passport.serializeUser(User.serializeUser())
-passport.deserializeUser(User.deserializeUser())
+passport.serializeUser(function(user, cb) {
+    process.nextTick(function() {
+      return cb(null, {
+        id: user.id,
+        username: user.username,
+        picture: user.picture
+      });
+    });
+  });
+  
+  passport.deserializeUser(function(user, cb) {
+    process.nextTick(function() {
+      return cb(null, user);
+    });
+  });
 
-passport.use(new GoogleStrategy({
+  passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "https://localhost:3000/auth/google/secrets"
+    callbackURL: "https://localhost:3000/auth/google/secrets",
+    passReqToCallback   : true
   },
-  function(accessToken, refreshToken, profile, cb) {
+  function(request, accessToken, refreshToken, profile, done) {
     User.findOrCreate({ googleId: profile.id }, function (err, user) {
-      return cb(err, user);
+      return done(err, user);
     });
   }
 ));
@@ -59,6 +73,15 @@ passport.use(new GoogleStrategy({
 app.get("/", function(req, res){
     res.render("home")
 })
+
+app.get("/auth/google", 
+    passport.authenticate("google", { scope: ["profile", "email"]}))
+
+app.get('/auth/google/secrets',
+    passport.authenticate( 'google', {
+        successRedirect: '/secrets',
+        failureRedirect: '/'
+}));
 
 app.get("/login", function(req, res){
     res.render("login")
@@ -71,7 +94,7 @@ app.get("/register", function(req, res){
 
 app.get("/secrets", function(req, res){
 
-    res.set('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stal   e=0, post-check=0, pre-check=0'); //this line solves the isse of back button, from Q&A of students
+    res.set('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0'); //this line solves the isse of back button, from Q&A of students
 
     if (req.isAuthenticated()) {
       User.find({"secret": {$ne: null}}, function(err, foundUsers){
