@@ -8,6 +8,7 @@ const session = require("express-session")
 const passport = require("passport")
 const passportLocalMongoose = require("passport-local-mongoose")
 const GoogleStrategy = require("passport-google-oauth20").Strategy
+const findOrCreate = require("mongoose-findorcreate")
 
 const app = express()
 
@@ -31,11 +32,12 @@ mongoose.connect("mongodb://localhost:27017/userDB", {useNewUrlParser: true})
 
 const userSchema = new mongoose.Schema ({
     email: String, 
-    password: String
+    password: String,
+    googleId: String
 })
 
 userSchema.plugin(passportLocalMongoose)
-
+userSchema.plugin(findOrCreate)
 
 const User = new mongoose.model("User", userSchema)
 
@@ -60,7 +62,7 @@ passport.serializeUser(function(user, cb) {
   passport.use(new GoogleStrategy({
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "https://localhost:3000/auth/google/secrets",
+    callbackURL: "http://localhost:3000/auth/google/secrets",
     passReqToCallback   : true
   },
   function(request, accessToken, refreshToken, profile, done) {
@@ -80,7 +82,7 @@ app.get("/auth/google",
 app.get('/auth/google/secrets',
     passport.authenticate( 'google', {
         successRedirect: '/secrets',
-        failureRedirect: '/'
+        failureRedirect: '/login'
 }));
 
 app.get("/login", function(req, res){
