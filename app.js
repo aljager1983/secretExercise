@@ -35,7 +35,8 @@ const userSchema = new mongoose.Schema ({
     email: String, 
     password: String,
     googleId: String, 
-    facebookId: String
+    facebookId: String, 
+    secret: String
 })
 
 userSchema.plugin(passportLocalMongoose)
@@ -109,35 +110,57 @@ app.get('/auth/facebook/secrets',
     res.redirect('/secrets');
   });
 
-app.get("/login", function(req, res){
+app.get("/login", (req, res) => {
     res.render("login")
 })
 
-app.get("/register", function(req, res){
+app.get("/register", (req, res) => {
     res.render("register")
 })
 
 
-app.get("/secrets", function(req, res){
+app.get("/secrets", (req, res) => {
 
     res.set('Cache-Control', 'no-cache, private, no-store, must-revalidate, max-stale=0, post-check=0, pre-check=0'); //this line solves the isse of back button, from Q&A of students
 
-    if (req.isAuthenticated()) {
-      User.find({"secret": {$ne: null}}, function(err, foundUsers){
-        if (err){
-          console.log(err);
-        } else {
-          if (foundUsers) {
-            res.render("secrets", {usersWithSecrets: foundUsers});
-          }
-        }
-      });
+   User.find({"secret": {$ne: null}}, (err, foundUsers)=>{
+    if(err) {
+      console.log(err)
     } else {
-      res.redirect("/login");
+      if(foundUsers){
+        res.render("secrets", {usersWithSecrets: foundUsers})
+      }
     }
-  });
+   })
+  })
 
-app.get("/logout", function(req, res){
+app.get("/submit", (req, res)=> {
+  if(req.isAuthenticated()){
+    res.render("submit")
+  } else {
+    res.redirect("/login")
+  }
+})
+
+app.post("/submit", (req, res) => {
+  const submittedSecret = req.body.secret
+
+  console.log(req.user.id)
+  User.findById(req.user.id, (err, foundUser) => {
+    if(err) {
+      console.log(err)
+    } else {
+      if(foundUser) {
+        foundUser.secret = submittedSecret
+        foundUser.save(()=>{
+          res.redirect("/secrets")
+        })
+      }
+    }
+  })
+})
+
+app.get("/logout", (req, res) => {
     req.logout(function(err){
         if(err){
             return next(err)
@@ -146,7 +169,7 @@ app.get("/logout", function(req, res){
     res.redirect("/")
 })
 
-app.post("/register", function(req, res){
+app.post("/register", (req, res) => {
     
     User.register({username: req.body.username}, req.body.password, function(err, user) {
         if(err) {
